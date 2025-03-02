@@ -1,0 +1,76 @@
+blueprint:
+  name: Tredansen control with IKEA remotes
+  description: |
+    Control IKEA Tredansen blinds with IKEA remotes over ZHA.
+    
+    Functions:
+    - Short press on ☼ button will open the blind to the specified open position.
+    - Short press on ☰ button will close the blind.
+    - Long press on ☼ or ☰ will stop the blind and move it to the specified stop position.
+    
+    This blueprint supports multiple remotes controlling the same blind.
+  domain: automation
+  input:
+    remotes:
+      name: Remotes
+      description: "IKEA remotes to use (can select multiple)"
+      selector:
+        device:
+          integration: zha
+          multiple: true
+    cover:
+      name: Cover
+      description: The Tredansen blind to control
+      selector:
+        target:
+          entity:
+            domain: cover
+    open_position:
+      name: Open Position
+      description: Position when opening the blind (0=fully open, 100=fully closed)
+      default: 0
+      selector:
+        number:
+          min: 0
+          max: 100
+          step: 1
+          mode: slider
+    stop_position:
+      name: Stop Position
+      description: Position when stopping the blind
+      default: 50
+      selector:
+        number:
+          min: 0
+          max: 100
+          step: 1
+          mode: slider
+
+trigger:
+- platform: event
+  event_type: zha_event
+  event_data:
+    device_id: !input remotes
+
+action:
+- choose:
+  - conditions:
+    - '{{ trigger.event.data.command == "up_open" }}'
+    sequence:
+    - service: cover.set_cover_position
+      target: !input cover
+      data:
+        position: !input open_position
+  - conditions:
+    - '{{ trigger.event.data.command == "down_close" }}'
+    sequence:
+    - service: cover.close_cover
+      target: !input cover
+  - conditions:
+    - '{{ trigger.event.data.command in ("stop", "stop_opening", "stop_closing") }}'
+    sequence:
+    - service: cover.set_cover_position
+      target: !input cover
+      data:
+        position: !input stop_position
+mode: restart
